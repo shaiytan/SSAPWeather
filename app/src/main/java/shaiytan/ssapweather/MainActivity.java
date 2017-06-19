@@ -6,6 +6,8 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.GsonBuilder;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -29,7 +31,10 @@ public class MainActivity extends Activity implements Callback<WeatherItem> {
         setContentView(R.layout.activity_main);
         retrofit = new Retrofit.Builder()
                 .baseUrl("http://api.openweathermap.org/data/2.5/")
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory
+                        .create(new GsonBuilder()
+                                .registerTypeAdapter(WeatherItem.class,new WeatherItem.WeatherDeserializer())
+                                .create()))
                 .build();
         weatherAPI = retrofit.create(WeatherAPI.class);
         desc = (TextView) findViewById(R.id.desc);
