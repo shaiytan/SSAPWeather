@@ -11,47 +11,9 @@
         android:layout_height="wrap_content"
         android:text="Load Data"
         android:onClick="onLoadClick"/>
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Description:"/>
-    <TextView
-        android:id="@+id/desc"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="desc"
-        android:textSize="20sp"/>
 
-    <TextView
+    <ListView
+        android:id="@+id/forecast"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Icon:"/>
-    <TextView
-        android:id="@+id/ic"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="icon"
-        android:textSize="20sp"/>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Temperature:"/>
-    <TextView
-        android:id="@+id/temp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="temp"
-        android:textSize="20sp"/>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Humidity:"/>
-    <TextView
-        android:id="@+id/humid"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="humid"
-        android:textSize="20sp"/>
+        android:layout_height="match_parent" />
 </LinearLayout>
