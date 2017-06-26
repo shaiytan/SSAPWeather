@@ -1,12 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="colorPrimary">#4fc3f7</item>
         <item name="colorPrimaryDark">#0093c4</item>
         <item name="colorAccent">#8bf6ff</item>
-        <item name="android:colorBackground">@android:color/darker_gray</item>
+        <item name="android:colorBackground">?android:attr/colorButtonNormal</item>
     </style>
-
 </resources>

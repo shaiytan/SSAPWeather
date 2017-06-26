@@ -1,68 +1,102 @@
 package shaiytan.ssapweather;
 
-import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.app.PendingIntent;
+import android.content.*;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.view.View;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.view.ViewGroup;
 import android.widget.*;
 
+import com.squareup.picasso.Picasso;
+
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedList;
 
 import shaiytan.ssapweather.content.DBHelper;
 import shaiytan.ssapweather.content.WeatherItem;
 import shaiytan.ssapweather.service.WeatherService;
+import shaiytan.ssapweather.view.WeatherAdapter;
 
-
-public class MainActivity extends Activity {
-    private ListView flist;
-    private BroadcastReceiver br;
+public class MainActivity extends AppCompatActivity {
+    private DBHelper dbHelper;
+    private ImageView icon;
+    private TextView desc;
+    private TextView temp;
+    private TextView humid;
+    private RecyclerView forecastView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        flist = (ListView) findViewById(R.id.forecast);
-        br = new BroadcastReceiver(){
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                DBHelper dbHelper = new DBHelper(MainActivity.this);
-                Cursor cursor = dbHelper.getReadableDatabase().rawQuery("select * from weather", null);
-                Toast.makeText(MainActivity.this, "success "+intent.getBooleanExtra("success",false), Toast.LENGTH_SHORT).show();
-                LinkedList<WeatherItem> items = new LinkedList<>();
-                while (cursor.moveToNext()){
-                    items.add( new WeatherItem(
-                            cursor.getString(cursor.getColumnIndex("description")),
-                            cursor.getString(cursor.getColumnIndex("icon")),
-                            cursor.getDouble(cursor.getColumnIndex("temperature")),
-                            cursor.getDouble(cursor.getColumnIndex("humidity")),
-                            new Date(cursor.getLong(cursor.getColumnIndex("datetime"))))
-                    );
-                }
-                cursor.close();
-                flist.setAdapter(new ArrayAdapter<>(
-                        MainActivity.this, android.R.layout.simple_list_item_1, items));
+        icon = (ImageView) findViewById(R.id.ic_weather);
+        desc = (TextView) findViewById(R.id.desc);
+        temp = (TextView) findViewById(R.id.temp);
+        humid = (TextView) findViewById(R.id.humid);
+        forecastView = (RecyclerView) findViewById(R.id.rec_view);
+        forecastView.setLayoutManager(
+                new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL,false));
+        forecastView.setItemAnimator(new DefaultItemAnimator());
+        dbHelper = new DBHelper(this);
+        Cursor forecast = dbHelper.readForecast();
+        if(forecast.getCount()>0) {
+            WeatherItem currentWeather = dbHelper.readWeather();
+            long lastUpdate = currentWeather.getDatetime().getTime();
+            if(System.currentTimeMillis()-lastUpdate<30*60*1000) {
+                setWeatherView(currentWeather);
+                setForecastView(forecast);
             }
-        };
-        IntentFilter filter = new IntentFilter(WeatherService.RESULT_ACTION);
-        registerReceiver(br,filter);
+            else {
+                Intent intent = new Intent(this, WeatherService.class);
+                invokeService(intent);
+            }
+        }
+        else {
+            Intent intent = new Intent(this, WeatherService.class);
+            invokeService(intent);
+        }
     }
-
-    public void onLoadClick(View view) {
-        Intent intent = new Intent(this, WeatherService.class)
-                .putExtra("lat",47.825)
-                .putExtra("lon",35.187);
+    private void invokeService(Intent intent)
+    {
+        PendingIntent result =
+                createPendingResult(100, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
+        intent.putExtra("result",result);
         startService(intent);
     }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(br);
+    private void setWeatherView(WeatherItem weather)
+    {
+        Picasso.with(this).load("http://openweathermap.org/img/w/" + weather.getImageID() +".png").into(icon);
+        desc.setText(weather.getWeatherDescription());
+        temp.setText(String.format("%+.1f C",weather.getTemperature()));
+        humid.setText(String.format("Влажность: %.1f%%",weather.getHumidity()));
     }
+    private void setForecastView(Cursor cursor)
+    {
+        ArrayList <WeatherItem> forecast=new ArrayList<>();
+        while (cursor.moveToNext()){
+            WeatherItem item = new WeatherItem(
+                    cursor.getString(cursor.getColumnIndex("description")),
+                    cursor.getString(cursor.getColumnIndex("icon")),
+                    cursor.getDouble(cursor.getColumnIndex("temperature")),
+                    cursor.getDouble(cursor.getColumnIndex("humidity")),
+                    new Date(cursor.getLong(cursor.getColumnIndex("datetime"))));
+            forecast.add(item);
+        }
+        forecastView.setAdapter(new WeatherAdapter(this,forecast));
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if(!data.getBooleanExtra("success",false)) {
+            Toast.makeText(this, "Failed to download", Toast.LENGTH_SHORT).show();
+        }
+        WeatherItem weather = dbHelper.readWeather();
+        setWeatherView(weather);
+        Cursor forecast = dbHelper.readForecast();
+        setForecastView(forecast);
+    }
+
 }

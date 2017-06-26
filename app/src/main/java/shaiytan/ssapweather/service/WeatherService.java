@@ -2,12 +2,15 @@ package shaiytan.ssapweather.service;
 
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.IBinder;
 
 import com.google.gson.Gson;
@@ -26,12 +29,15 @@ import shaiytan.ssapweather.content.WeatherItem;
 
 public class WeatherService extends Service {
     public static final int UPDATE_PERIOD = 60 * 1000; //30min to update
+    private static final double UNSET = Double.MAX_VALUE;
     private WeatherAPI weatherAPI;
     private DBHelper dbHelper;
     private NotificationManager nm;
     private double latitude;
     private double longitude;
     public static final String RESULT_ACTION = "shaiytan.ssapweather.service";
+    private PendingIntent result;
+
     public WeatherService() {
     }
 
@@ -48,17 +54,34 @@ public class WeatherService extends Service {
                 .build();
         weatherAPI = retrofit.create(WeatherAPI.class);
         dbHelper = new DBHelper(this);
-
+        latitude=UNSET;
+        longitude=UNSET;
         updateTimer = new Timer();
         updateTimer.schedule(updateTask,UPDATE_PERIOD, UPDATE_PERIOD);
-        nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        latitude = intent.getDoubleExtra("lat",0);
-        longitude = intent.getDoubleExtra("lon",0);
-        new Thread(loadTask,"serviceloader").start();
+        nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        result = intent.getParcelableExtra("result");
+        if(intent.hasCategory("with_location")) {
+            latitude = intent.getDoubleExtra("lat", UNSET);
+            longitude = intent.getDoubleExtra("lon", UNSET);
+        }
+        else {
+            LocationManager loc = (LocationManager) getSystemService(LOCATION_SERVICE);
+            try {
+                loc.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,
+                        PendingIntent.getService(this,100,new Intent(),PendingIntent.FLAG_UPDATE_CURRENT));
+                Location location = loc.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                latitude=location.getLatitude();
+                longitude=location.getLongitude();
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+        }
+        new Thread(loadTask).start();
         return START_STICKY;
     }
 
@@ -76,19 +99,7 @@ public class WeatherService extends Service {
         try {
             Response<WeatherItem> response = weatherAPI.getCurrentWeather(latitude, longitude).execute();
             WeatherItem weather = response.body();
-            ContentValues cv = new ContentValues();
-            cv.put("datetime",weather.getDatetime().getTime());
-            cv.put("description",weather.getWeatherDescription());
-            cv.put("temperature",weather.getTemperature());
-            cv.put("humidity",weather.getHumidity());
-            cv.put("icon",weather.getImageID());
-
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
-            if(db.update("weather",cv,"_id=0",null)==0)
-            {
-                cv.put("_id",0);
-                db.insert("weather",null,cv);
-            }
+            dbHelper.writeCurrentWeather(weather);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -99,17 +110,7 @@ public class WeatherService extends Service {
         try {
             Response<WeatherItem[]> response = weatherAPI.getForecast(latitude, longitude).execute();
             WeatherItem[] forecast = response.body();
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
-            db.delete("weather","_id!=0",null);
-            for (WeatherItem weather : forecast) {
-                ContentValues cv = new ContentValues();
-                cv.put("datetime",weather.getDatetime().getTime());
-                cv.put("description",weather.getWeatherDescription());
-                cv.put("temperature",weather.getTemperature());
-                cv.put("humidity",weather.getHumidity());
-                cv.put("icon",weather.getImageID());
-                db.insert("weather",null,cv);
-            }
+            dbHelper.writeForecast(forecast);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -123,7 +124,7 @@ public class WeatherService extends Service {
             if (success)
             {
                 SQLiteDatabase db = dbHelper.getReadableDatabase();
-                Cursor cursor = db.query("weather", new String[]{"*"}, "_id=0", null, null, null, null);
+                Cursor cursor = db.rawQuery("select * from weather where _id=0", null);
                 cursor.moveToFirst();
                 long lastUpdateTime = cursor.getLong(cursor.getColumnIndex("datetime"));
                 WeatherItem res = new WeatherItem(
@@ -133,6 +134,7 @@ public class WeatherService extends Service {
                         cursor.getDouble(cursor.getColumnIndex("humidity")),
                         new Date(lastUpdateTime)
                 );
+                cursor.close();
                 Notification notification = new Notification.Builder(getApplicationContext())
                         .setContentTitle("Current Weather")
                         .setContentText(res.toString())
@@ -151,7 +153,11 @@ public class WeatherService extends Service {
             Intent intent=new Intent(RESULT_ACTION);
             boolean success = loadWeather() && loadForecast();
             intent.putExtra("success",success);
-            sendBroadcast(intent);
+            try {
+                result.send(WeatherService.this,100,intent);
+            } catch (PendingIntent.CanceledException e) {
+                e.printStackTrace();
+            }
         }
     };
 }
