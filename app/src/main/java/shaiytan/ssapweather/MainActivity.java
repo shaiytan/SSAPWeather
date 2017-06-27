@@ -5,19 +5,14 @@ import android.content.*;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.DefaultItemAnimator;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.view.ViewGroup;
+import android.support.v7.widget.*;
 import android.widget.*;
 
 import com.squareup.picasso.Picasso;
 
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 
-import shaiytan.ssapweather.content.DBHelper;
-import shaiytan.ssapweather.content.WeatherItem;
+import shaiytan.ssapweather.content.*;
 import shaiytan.ssapweather.service.WeatherService;
 import shaiytan.ssapweather.view.WeatherAdapter;
 
@@ -28,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView temp;
     private TextView humid;
     private RecyclerView forecastView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,11 +37,12 @@ public class MainActivity extends AppCompatActivity {
         forecastView.setLayoutManager(
                 new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL,false));
         forecastView.setItemAnimator(new DefaultItemAnimator());
+
         dbHelper = new DBHelper(this);
         Cursor forecast = dbHelper.readForecast();
         if(forecast.getCount()>0) {
             WeatherItem currentWeather = dbHelper.readWeather();
-            long lastUpdate = currentWeather.getDatetime().getTime();
+            long lastUpdate = currentWeather.getDatetime()*1000;
             if(System.currentTimeMillis()-lastUpdate<30*60*1000) {
                 setWeatherView(currentWeather);
                 setForecastView(forecast);
@@ -83,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
                     cursor.getString(cursor.getColumnIndex("icon")),
                     cursor.getDouble(cursor.getColumnIndex("temperature")),
                     cursor.getDouble(cursor.getColumnIndex("humidity")),
-                    new Date(cursor.getLong(cursor.getColumnIndex("datetime"))));
+                    cursor.getLong(cursor.getColumnIndex("datetime")));
             forecast.add(item);
         }
         forecastView.setAdapter(new WeatherAdapter(this,forecast));

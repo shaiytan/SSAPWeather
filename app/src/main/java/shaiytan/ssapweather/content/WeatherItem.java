@@ -15,7 +15,7 @@ public class WeatherItem {
     private String imageID;
     private double temperature;
     private double humidity;
-    private Date datetime;
+    private long datetime;
     public String getWeatherDescription() {
         return weatherDescription;
     }
@@ -32,11 +32,11 @@ public class WeatherItem {
         return humidity;
     }
 
-    public Date getDatetime() {
+    public long getDatetime() {
         return datetime;
     }
 
-    public WeatherItem(String weatherDescription, String imageID, double temperature, double humidity, Date datetime) {
+    public WeatherItem(String weatherDescription, String imageID, double temperature, double humidity, long datetime) {
         this.weatherDescription = weatherDescription;
         this.imageID = imageID;
         this.temperature = temperature;
@@ -48,7 +48,7 @@ public class WeatherItem {
     public String toString() {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getDefault());
-        calendar.setTime(datetime);
+        calendar.setTimeInMillis(datetime*1000);
         return String.format("Weather: %s" + "\nTemperature: %.1f C" +
                         "\nHumidity: %.1f %%\nDate: %02d.%02d %02d:%02d",
                 weatherDescription,temperature,humidity,
@@ -69,7 +69,7 @@ public class WeatherItem {
             JsonObject main = jsonObject.get("main").getAsJsonObject();
             double temp = main.get("temp").getAsDouble();
             double humidity = main.get("humidity").getAsDouble();
-            Date datetime = new Date(jsonObject.get("dt").getAsLong()*1000);
+            long datetime = jsonObject.get("dt").getAsLong();
             return new WeatherItem(description,icon,temp,humidity,datetime);
         }
     }

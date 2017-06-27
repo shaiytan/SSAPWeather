@@ -45,7 +45,7 @@ public class DBHelper extends SQLiteOpenHelper
                 cursor.getString(cursor.getColumnIndex("icon")),
                 cursor.getDouble(cursor.getColumnIndex("temperature")),
                 cursor.getDouble(cursor.getColumnIndex("humidity")),
-                new Date(cursor.getLong(cursor.getColumnIndex("datetime"))));
+                cursor.getLong(cursor.getColumnIndex("datetime")));
         cursor.close();
         return item;
     }
@@ -56,7 +56,7 @@ public class DBHelper extends SQLiteOpenHelper
     public void writeCurrentWeather(WeatherItem weather)
     {
         ContentValues cv = new ContentValues();
-        cv.put("datetime",weather.getDatetime().getTime());
+        cv.put("datetime",weather.getDatetime());
         cv.put("description",weather.getWeatherDescription());
         cv.put("temperature",weather.getTemperature());
         cv.put("humidity",weather.getHumidity());
@@ -75,7 +75,7 @@ public class DBHelper extends SQLiteOpenHelper
         db.delete("weather","_id!=0",null);
         for (WeatherItem weather : forecast) {
             ContentValues cv = new ContentValues();
-            cv.put("datetime",weather.getDatetime().getTime());
+            cv.put("datetime",weather.getDatetime());
             cv.put("description",weather.getWeatherDescription());
             cv.put("temperature",weather.getTemperature());
             cv.put("humidity",weather.getHumidity());

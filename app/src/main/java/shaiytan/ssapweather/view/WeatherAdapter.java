@@ -41,7 +41,7 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
         WeatherItem item = forecast.get(position);
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getDefault());
-        calendar.setTime(item.getDatetime());
+        calendar.setTimeInMillis(item.getDatetime()*1000);
         holder.datetime.setText(String.format("%1$td.%1$tm\n%1$tH:%1$tM", calendar));
         Picasso.with(context)
                 .load("http://openweathermap.org/img/w/" + item.getImageID() +".png")

@@ -126,13 +126,12 @@ public class WeatherService extends Service {
                 SQLiteDatabase db = dbHelper.getReadableDatabase();
                 Cursor cursor = db.rawQuery("select * from weather where _id=0", null);
                 cursor.moveToFirst();
-                long lastUpdateTime = cursor.getLong(cursor.getColumnIndex("datetime"));
                 WeatherItem res = new WeatherItem(
                         cursor.getString(cursor.getColumnIndex("description")),
                         cursor.getString(cursor.getColumnIndex("icon")),
                         cursor.getDouble(cursor.getColumnIndex("temperature")),
                         cursor.getDouble(cursor.getColumnIndex("humidity")),
-                        new Date(lastUpdateTime)
+                        cursor.getLong(cursor.getColumnIndex("datetime"))
                 );
                 cursor.close();
                 Notification notification = new Notification.Builder(getApplicationContext())
