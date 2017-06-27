@@ -16,6 +16,7 @@ public class DBHelper extends SQLiteOpenHelper
 {
     private static final String CREATE_TABLE_SCRIPT = "CREATE TABLE weather(" +
             "_id INTEGER PRIMARY KEY AUTOINCREMENT," +
+            "location TEXT NOT NULL," +
             "datetime INTEGER NOT NULL," +
             "description TEXT NOT NULL," +
             "temperature REAL NOT NULL," +
@@ -58,7 +59,7 @@ public class DBHelper extends SQLiteOpenHelper
                     "_id!=0",null,"strftime('%d',datetime,'unixepoch','localtime')",null,"datetime");
         else return db.rawQuery("select * from weather where _id!=0",null);
     }
-    public void writeCurrentWeather(WeatherItem weather)
+    public void writeCurrentWeather(WeatherItem weather,String location)
     {
         ContentValues cv = new ContentValues();
         cv.put("datetime",weather.getDatetime());
@@ -66,7 +67,7 @@ public class DBHelper extends SQLiteOpenHelper
         cv.put("temperature",weather.getTemperature());
         cv.put("humidity",weather.getHumidity());
         cv.put("icon",weather.getImageID());
-
+        cv.put("location",location);
         SQLiteDatabase db = getWritableDatabase();
         if(db.update("weather",cv,"_id=0",null)==0)
         {
@@ -74,7 +75,7 @@ public class DBHelper extends SQLiteOpenHelper
             db.insert("weather",null,cv);
         }
     }
-    public void writeForecast(WeatherItem[] forecast)
+    public void writeForecast(WeatherItem[] forecast,String location)
     {
         SQLiteDatabase db = getWritableDatabase();
         db.delete("weather","_id!=0",null);
@@ -85,7 +86,14 @@ public class DBHelper extends SQLiteOpenHelper
             cv.put("temperature",weather.getTemperature());
             cv.put("humidity",weather.getHumidity());
             cv.put("icon",weather.getImageID());
+            cv.put("location",location);
             db.insert("weather",null,cv);
         }
+    }
+    public String getLocation()
+    {
+        Cursor cursor = getReadableDatabase().rawQuery("select distinct location from weather;", null);
+        if (cursor.moveToNext()) return cursor.getString(0);
+        else return "";
     }
 }

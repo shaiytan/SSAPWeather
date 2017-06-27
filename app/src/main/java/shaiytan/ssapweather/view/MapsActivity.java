@@ -56,8 +56,9 @@ public class MapsActivity extends FragmentActivity
             loc.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,createPendingResult(1,new Intent(),0));
             Location l=loc.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             LatLng here = new LatLng(l.getLatitude(),l.getLongitude());
-            marker = mMap.addMarker(new MarkerOptions().position(here).title("You Are Here"));
+            marker = mMap.addMarker(new MarkerOptions().position(here).title("Выбери город"));
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(here,6));
+            geocodingAPI.geocode(here.latitude+","+here.longitude).enqueue(this);
         }
         catch (SecurityException ignored){}
     }

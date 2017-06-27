@@ -16,6 +16,7 @@ import android.os.IBinder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -25,6 +26,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import shaiytan.ssapweather.R;
 import shaiytan.ssapweather.content.DBHelper;
 import shaiytan.ssapweather.content.WeatherItem;
+import shaiytan.ssapweather.geocoding.GeocodingAPI;
+import shaiytan.ssapweather.geocoding.Geopoint;
 
 public class WeatherService extends Service {
     public static final int UPDATE_PERIOD = 60 * 1000; //30min to update
@@ -34,6 +37,7 @@ public class WeatherService extends Service {
     private NotificationManager nm;
     private double latitude;
     private double longitude;
+    private String location;
     public static final String RESULT_ACTION = "shaiytan.ssapweather.service";
     private PendingIntent result;
 
@@ -55,9 +59,9 @@ public class WeatherService extends Service {
         dbHelper = new DBHelper(this);
         latitude=UNSET;
         longitude=UNSET;
+        location="";
         updateTimer = new Timer();
         updateTimer.schedule(updateTask,UPDATE_PERIOD, UPDATE_PERIOD);
-
     }
 
     @Override
@@ -67,8 +71,9 @@ public class WeatherService extends Service {
         if(intent.hasCategory("with_location")) {
             latitude = intent.getDoubleExtra("lat", UNSET);
             longitude = intent.getDoubleExtra("lon", UNSET);
+            location = intent.getStringExtra("location");
         }
-        else if(latitude==UNSET||longitude==UNSET){
+        else if(location.isEmpty()){
             LocationManager loc = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
                 loc.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,
@@ -79,6 +84,7 @@ public class WeatherService extends Service {
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
+            location = intent.getStringExtra("location");
         }
         new Thread(loadTask).start();
         return START_STICKY;
@@ -97,7 +103,7 @@ public class WeatherService extends Service {
         try {
             Response<WeatherItem> response = weatherAPI.getCurrentWeather(latitude, longitude).execute();
             WeatherItem weather = response.body();
-            dbHelper.writeCurrentWeather(weather);
+            dbHelper.writeCurrentWeather(weather,location);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -108,7 +114,7 @@ public class WeatherService extends Service {
         try {
             Response<WeatherItem[]> response = weatherAPI.getForecast(latitude, longitude).execute();
             WeatherItem[] forecast = response.body();
-            dbHelper.writeForecast(forecast);
+            dbHelper.writeForecast(forecast,location);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -148,6 +154,23 @@ public class WeatherService extends Service {
         @Override
         public void run() {
             Intent intent=new Intent(RESULT_ACTION);
+            if(location.isEmpty())
+            {
+                Gson gson = new GsonBuilder()
+                        .registerTypeAdapter(Geopoint.class, new Geopoint.GeopointDeserializer())
+                        .create();
+                Retrofit retrofit = new Retrofit.Builder()
+                        .baseUrl("https://maps.googleapis.com/maps/api/")
+                        .addConverterFactory(GsonConverterFactory.create(gson))
+                        .build();
+                GeocodingAPI geocodingAPI = retrofit.create(GeocodingAPI.class);
+                try {
+                    Response<Geopoint> response = geocodingAPI.geocode(latitude + "," + longitude).execute();
+                    if(response.isSuccessful()) location=response.body().getLongName();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
             boolean success = loadWeather() && loadForecast();
             intent.putExtra("success",success);
             try {

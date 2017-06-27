@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeUpdater;
     private FloatingActionButton btnMap;
     private Toolbar toolbar;
-    private String location="Запорожье";
+    private String location="";
     private TextView loc;
 
     @Override
@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         init();
+        location=dbHelper.getLocation();
         Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
         if(forecast.getCount()>0) {
             WeatherItem currentWeather = dbHelper.readWeather();
@@ -66,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
+        toolbar.setTitle(R.string.app_name);
         btnMap = (FloatingActionButton) findViewById(R.id.map_btn);
         icon = (ImageView) findViewById(R.id.ic_weather);
         desc = (TextView) findViewById(R.id.desc);
@@ -99,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
     {
         PendingIntent result =
                 createPendingResult(WEATHER_REQUEST, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
+        intent.putExtra("location",location);
         intent.putExtra("result",result);
         startService(intent);
     }
@@ -130,19 +133,20 @@ public class MainActivity extends AppCompatActivity {
             case MAP_REQUEST:
                 if(resultCode==RESULT_OK){
                     Geopoint point = (Geopoint) data.getSerializableExtra("point");
+                    location=point.getLongName();
                     Intent intent = new Intent(MainActivity.this, WeatherService.class);
                     intent.addCategory("with_location")
                             .putExtra("lat",point.getLatitude())
-                            .putExtra("lon",point.getLongitude())
-                            .putExtra("loc_name",point.getLongName());
+                            .putExtra("lon",point.getLongitude());
                     invokeService(intent);
-                    location=point.getLongName();
+
                 }
                 break;
             case WEATHER_REQUEST:
                 if(!data.getBooleanExtra("success",false)) {
                     Toast.makeText(this, "Failed to download", Toast.LENGTH_SHORT).show();
                 }
+                location=dbHelper.getLocation();
                 WeatherItem weather = dbHelper.readWeather();
                 setWeatherView(weather);
                 Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
