@@ -13,14 +13,18 @@ import android.widget.*;
 
 import com.squareup.picasso.Picasso;
 
+import java.io.Serializable;
 import java.util.*;
 
 import shaiytan.ssapweather.R;
 import shaiytan.ssapweather.content.*;
+import shaiytan.ssapweather.geocoding.Geopoint;
 import shaiytan.ssapweather.service.WeatherService;
 import android.support.v7.widget.Toolbar;
 
 public class MainActivity extends AppCompatActivity {
+    public static final int MAP_REQUEST = 1;
+    public static final int WEATHER_REQUEST = 2;
     private DBHelper dbHelper;
     private ImageView icon;
     private TextView desc;
@@ -31,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeUpdater;
     private FloatingActionButton btnMap;
     private Toolbar toolbar;
+    private String location="Запорожье";
+    private TextView loc;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,11 +65,13 @@ public class MainActivity extends AppCompatActivity {
     {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        toolbar.setLogo(R.mipmap.ic_launcher);
         btnMap = (FloatingActionButton) findViewById(R.id.map_btn);
         icon = (ImageView) findViewById(R.id.ic_weather);
         desc = (TextView) findViewById(R.id.desc);
         temp = (TextView) findViewById(R.id.temp);
         humid = (TextView) findViewById(R.id.humid);
+        loc = (TextView) findViewById(R.id.loc);
         forecastView = (RecyclerView) findViewById(R.id.rec_view);
         forecastView.setLayoutManager(
                 new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL,false));
@@ -90,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
     private void invokeService(Intent intent)
     {
         PendingIntent result =
-                createPendingResult(100, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
+                createPendingResult(WEATHER_REQUEST, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
         intent.putExtra("result",result);
         startService(intent);
     }
@@ -100,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
         desc.setText(weather.getWeatherDescription());
         temp.setText(String.format("%+.1f C",weather.getTemperature()));
         humid.setText(String.format("Влажность: %.1f%%",weather.getHumidity()));
+        loc.setText(location);
     }
     private void setForecastView(Cursor cursor)
     {
@@ -117,16 +126,35 @@ public class MainActivity extends AppCompatActivity {
     }
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(!data.getBooleanExtra("success",false)) {
-            Toast.makeText(this, "Failed to download", Toast.LENGTH_SHORT).show();
+        switch (requestCode){
+            case MAP_REQUEST:
+                if(resultCode==RESULT_OK){
+                    Geopoint point = (Geopoint) data.getSerializableExtra("point");
+                    Intent intent = new Intent(MainActivity.this, WeatherService.class);
+                    intent.addCategory("with_location")
+                            .putExtra("lat",point.getLatitude())
+                            .putExtra("lon",point.getLongitude())
+                            .putExtra("loc_name",point.getLongName());
+                    invokeService(intent);
+                    location=point.getLongName();
+                }
+                break;
+            case WEATHER_REQUEST:
+                if(!data.getBooleanExtra("success",false)) {
+                    Toast.makeText(this, "Failed to download", Toast.LENGTH_SHORT).show();
+                }
+                WeatherItem weather = dbHelper.readWeather();
+                setWeatherView(weather);
+                Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
+                setForecastView(forecast);
+                swipeUpdater.setRefreshing(false);
+                break;
         }
-        WeatherItem weather = dbHelper.readWeather();
-        setWeatherView(weather);
-        Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
-        setForecastView(forecast);
-        swipeUpdater.setRefreshing(false);
+
     }
 
     public void onMapClick(View view) {
+        Intent intent = new Intent(this, MapsActivity.class);
+        startActivityForResult(intent, MAP_REQUEST);
     }
 }

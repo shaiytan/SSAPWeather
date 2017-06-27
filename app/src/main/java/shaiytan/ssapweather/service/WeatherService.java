@@ -16,7 +16,6 @@ import android.os.IBinder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -69,7 +68,7 @@ public class WeatherService extends Service {
             latitude = intent.getDoubleExtra("lat", UNSET);
             longitude = intent.getDoubleExtra("lon", UNSET);
         }
-        else {
+        else if(latitude==UNSET||longitude==UNSET){
             LocationManager loc = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
                 loc.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,
@@ -84,7 +83,6 @@ public class WeatherService extends Service {
         new Thread(loadTask).start();
         return START_STICKY;
     }
-
     @Override
     public IBinder onBind(Intent intent) {
         return null;

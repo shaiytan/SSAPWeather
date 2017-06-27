@@ -38,7 +38,7 @@ public class DBHelper extends SQLiteOpenHelper
     }
     public WeatherItem readWeather()
     {
-        Cursor cursor = getReadableDatabase().rawQuery("select * from weather where _id!=0", null);
+        Cursor cursor = getReadableDatabase().rawQuery("select * from weather where _id=0", null);
         cursor.moveToNext();
         WeatherItem item = new WeatherItem(
                 cursor.getString(cursor.getColumnIndex("description")),
