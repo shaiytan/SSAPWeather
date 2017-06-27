@@ -5,15 +5,15 @@ import android.content.*;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v4.widget.*;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.*;
-import android.view.View;
+import android.view.*;
 import android.widget.*;
 
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.squareup.picasso.Picasso;
 
-import java.io.Serializable;
 import java.util.*;
 
 import shaiytan.ssapweather.R;
@@ -37,6 +37,13 @@ public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private String location="";
     private TextView loc;
+    private GoogleApiClient client;
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.search_menu,menu);
+
+        return true;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
         toolbar.setTitle(R.string.app_name);
+
         btnMap = (FloatingActionButton) findViewById(R.id.map_btn);
         icon = (ImageView) findViewById(R.id.ic_weather);
         desc = (TextView) findViewById(R.id.desc);
@@ -156,7 +164,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-
     public void onMapClick(View view) {
         Intent intent = new Intent(this, MapsActivity.class);
         startActivityForResult(intent, MAP_REQUEST);
