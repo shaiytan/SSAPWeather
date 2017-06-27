@@ -4,6 +4,7 @@ import android.app.PendingIntent;
 import android.content.*;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.*;
 import android.widget.*;
@@ -24,7 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView humid;
     private RecyclerView forecastView;
     private SwitchCompat forecastSwitch;
-
+    private SwipeRefreshLayout swipeUpdater;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +45,15 @@ public class MainActivity extends AppCompatActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 Cursor forecast = dbHelper.readForecast(isChecked);
                 setForecastView(forecast);
+            }
+        });
+        swipeUpdater = (SwipeRefreshLayout) findViewById(R.id.swipe_updater);
+        swipeUpdater.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                Intent intent = new Intent(MainActivity.this, WeatherService.class);
+                invokeService(intent);
+                swipeUpdater.setRefreshing(true);
             }
         });
         dbHelper = new DBHelper(this);
@@ -102,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         setWeatherView(weather);
         Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
         setForecastView(forecast);
+        swipeUpdater.setRefreshing(false);
     }
 
 }
