@@ -49,9 +49,14 @@ public class DBHelper extends SQLiteOpenHelper
         cursor.close();
         return item;
     }
-    public Cursor readForecast()
+    public Cursor readForecast(boolean extended)
     {
-        return getReadableDatabase().rawQuery("select * from weather where _id!=0",null);
+        SQLiteDatabase db = getReadableDatabase();
+        if(!extended)
+            return db.query("weather",
+                    new String[]{"description","icon","temperature","humidity","datetime","max(temperature)"},
+                    "_id!=0",null,"strftime('%d',datetime,'unixepoch','localtime')",null,"datetime");
+        else return db.rawQuery("select * from weather where _id!=0",null);
     }
     public void writeCurrentWeather(WeatherItem weather)
     {

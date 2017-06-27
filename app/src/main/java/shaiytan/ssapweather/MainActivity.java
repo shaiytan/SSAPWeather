@@ -23,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView temp;
     private TextView humid;
     private RecyclerView forecastView;
+    private SwitchCompat forecastSwitch;
 
 
     @Override
@@ -37,9 +38,16 @@ public class MainActivity extends AppCompatActivity {
         forecastView.setLayoutManager(
                 new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL,false));
         forecastView.setItemAnimator(new DefaultItemAnimator());
-
+        forecastSwitch = (SwitchCompat) findViewById(R.id.switch1);
+        forecastSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Cursor forecast = dbHelper.readForecast(isChecked);
+                setForecastView(forecast);
+            }
+        });
         dbHelper = new DBHelper(this);
-        Cursor forecast = dbHelper.readForecast();
+        Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
         if(forecast.getCount()>0) {
             WeatherItem currentWeather = dbHelper.readWeather();
             long lastUpdate = currentWeather.getDatetime()*1000;
@@ -83,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
                     cursor.getLong(cursor.getColumnIndex("datetime")));
             forecast.add(item);
         }
-        forecastView.setAdapter(new WeatherAdapter(this,forecast));
+        forecastView.setAdapter(new WeatherAdapter(this,forecast,forecastSwitch.isChecked()));
     }
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -92,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         }
         WeatherItem weather = dbHelper.readWeather();
         setWeatherView(weather);
-        Cursor forecast = dbHelper.readForecast();
+        Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
         setForecastView(forecast);
     }
 

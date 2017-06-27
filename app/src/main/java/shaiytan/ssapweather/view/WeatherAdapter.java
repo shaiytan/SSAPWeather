@@ -24,9 +24,11 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
 
     private List<WeatherItem> forecast;
     private Context context;
-    public WeatherAdapter(Context context,List<WeatherItem> forecast) {
+    private boolean extended;
+    public WeatherAdapter(Context context,List<WeatherItem> forecast,boolean extended) {
         this.forecast = forecast;
         this.context=context;
+        this.extended=extended;
     }
 
     @Override
@@ -42,7 +44,8 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getDefault());
         calendar.setTimeInMillis(item.getDatetime()*1000);
-        holder.datetime.setText(String.format("%1$td.%1$tm\n%1$tH:%1$tM", calendar));
+        if(extended) holder.datetime.setText(String.format("%1$td.%1$tm\n%1$tH:%1$tM", calendar));
+        else holder.datetime.setText(String.format("%1$td.%1$tm", calendar));
         Picasso.with(context)
                 .load("http://openweathermap.org/img/w/" + item.getImageID() +".png")
                 .into(holder.icon);
