@@ -12,6 +12,12 @@ import android.view.*;
 import android.widget.*;
 
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.places.AutocompleteFilter;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
+import com.google.android.gms.location.places.ui.PlaceSelectionListener;
+import com.google.android.gms.location.places.ui.SupportPlaceAutocompleteFragment;
 import com.squareup.picasso.Picasso;
 
 import java.util.*;
@@ -37,13 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private String location="";
     private TextView loc;
-    private GoogleApiClient client;
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.search_menu,menu);
-
-        return true;
-    }
+    private PlaceAutocompleteFragment placePicker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,7 +75,28 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
         toolbar.setTitle(R.string.app_name);
+        placePicker = (PlaceAutocompleteFragment) getFragmentManager()
+                .findFragmentById(R.id.place_pick);
+        placePicker.setFilter(new AutocompleteFilter.Builder()
+                .setTypeFilter(AutocompleteFilter.TYPE_FILTER_CITIES)
+                .build());
+        placePicker.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(Place place) {
+                location=place.getName().toString();
+                Intent intent = new Intent(MainActivity.this, WeatherService.class);
+                intent.addCategory("with_location")
+                        .putExtra("lat",place.getLatLng().latitude)
+                        .putExtra("lon",place.getLatLng().longitude);
+                invokeService(intent);
 
+            }
+
+            @Override
+            public void onError(Status status) {
+                Toast.makeText(MainActivity.this, status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
         btnMap = (FloatingActionButton) findViewById(R.id.map_btn);
         icon = (ImageView) findViewById(R.id.ic_weather);
         desc = (TextView) findViewById(R.id.desc);
