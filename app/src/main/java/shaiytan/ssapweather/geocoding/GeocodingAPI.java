@@ -6,6 +6,7 @@ import retrofit2.http.Query;
 
 /**
  * Created by Shaiytan on 27.06.2017.
+ * Используется для нахождения названия города по заданным координатам
  */
 
 public interface GeocodingAPI {

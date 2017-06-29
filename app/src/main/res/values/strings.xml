@@ -5,4 +5,5 @@
     <string name="google_auth_key">109093971883-lp2tf2f9din9cuhp9lqei6gpgmo48b4r.apps.googleusercontent.com</string>
     <string name="facebook_app_id">183623318837378</string>
     <string name="fb_login_protocol_scheme">fb183623318837378</string>
+    <string name="create_table_script">CREATE TABLE weather(_id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL, datetime INTEGER NOT NULL, description TEXT NOT NULL, temperature REAL NOT NULL, humidity REAL NOT NULL, icon TEXT NOT NULL);</string>
 </resources>

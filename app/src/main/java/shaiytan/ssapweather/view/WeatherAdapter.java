@@ -19,18 +19,20 @@ import shaiytan.ssapweather.content.WeatherItem;
 
 /**
  * Created by Shaiytan on 26.06.2017.
+ * адаптер для красивого отображения погоды в списке
  */
-public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHolder> {
+class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHolder> {
 
     private List<WeatherItem> forecast;
     private Context context;
     private boolean extended;
-    public WeatherAdapter(Context context,List<WeatherItem> forecast,boolean extended) {
+    WeatherAdapter(Context context, List<WeatherItem> forecast, boolean extended) {
         this.forecast = forecast;
         this.context=context;
         this.extended=extended;
     }
 
+    //создание карточки с погодой, и последующее её переиспользование
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
@@ -38,12 +40,14 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
         return new ViewHolder(v);
     }
 
+    //Размещение данных на карточке
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         WeatherItem item = forecast.get(position);
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getDefault());
         calendar.setTimeInMillis(item.getDatetime()*1000);
+        // на прогнозе погоды по дням, время можно не отображать, только дату
         if(extended) holder.datetime.setText(String.format("%1$td.%1$tm\n%1$tH:%1$tM", calendar));
         else holder.datetime.setText(String.format("%1$td.%1$tm", calendar));
         Picasso.with(context)
@@ -56,6 +60,7 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
     public int getItemCount() {
         return forecast.size();
     }
+
     class ViewHolder extends RecyclerView.ViewHolder{
         private ImageView icon;
         private TextView maxTemp;

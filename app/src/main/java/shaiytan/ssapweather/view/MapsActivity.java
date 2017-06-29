@@ -15,13 +15,12 @@ import retrofit2.*;
 import retrofit2.converter.gson.GsonConverterFactory;
 import shaiytan.ssapweather.R;
 import shaiytan.ssapweather.geocoding.*;
-
+//Карта для выбора города или области для прогноза погоды
 public class MapsActivity extends FragmentActivity
         implements OnMapReadyCallback,
         GoogleMap.OnMapClickListener,
         Callback<Geopoint> {
 
-    private GoogleMap mMap;
     private Marker marker;
     private GeocodingAPI geocodingAPI;
     private Toolbar toolbar;
@@ -48,16 +47,15 @@ public class MapsActivity extends FragmentActivity
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-        mMap.setOnMapClickListener(this);
+        googleMap.setOnMapClickListener(this);
         LocationManager loc= (LocationManager) getSystemService(LOCATION_SERVICE);
         try
         {
             loc.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,createPendingResult(1,new Intent(),0));
             Location l=loc.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             LatLng here = new LatLng(l.getLatitude(),l.getLongitude());
-            marker = mMap.addMarker(new MarkerOptions().position(here).title("Выбери город"));
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(here,6));
+            marker = googleMap.addMarker(new MarkerOptions().position(here).title("Выбери город"));
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(here,6));
             geocodingAPI.geocode(here.latitude+","+here.longitude).enqueue(this);
         }
         catch (SecurityException ignored){}

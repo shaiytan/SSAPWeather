@@ -8,9 +8,10 @@ import shaiytan.ssapweather.content.WeatherItem;
 
 /**
  * Created by Shaiytan on 19.06.2017.
+ * Делаются запросы к сайту с погодой
  */
 
-public interface WeatherAPI {
+interface WeatherAPI {
     String DEFAULT_PARAMS = "?units=metric&lang=ru&APPID=9e56cdd894013de6a160a5bc63d9ae8b";
 
     @GET("weather" + DEFAULT_PARAMS)

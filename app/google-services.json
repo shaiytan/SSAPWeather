@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "109093971883",
+    "project_id": "ssapweather"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:109093971883:android:c6bc278cb80303a0",
+        "android_client_info": {
+          "package_name": "shaiytan.ssapweather"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "109093971883-lp2tf2f9din9cuhp9lqei6gpgmo48b4r.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "109093971883-1defkd6audijru7gncknchrvr2up2kdk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "shaiytan.ssapweather",
+            "certificate_hash": "e9e7554392968cddd94d0f0b54b6f28a4f288a1b"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCcWxjUcp1SJdknwXHkI_VM2YNcVZwPRYo"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

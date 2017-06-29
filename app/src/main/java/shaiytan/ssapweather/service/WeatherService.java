@@ -1,50 +1,56 @@
 package shaiytan.ssapweather.service;
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.location.Location;
-import android.location.LocationManager;
+import android.app.*;
+import android.content.*;
+import android.location.*;
 import android.os.IBinder;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 
 import java.io.IOException;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
-import retrofit2.Response;
-import retrofit2.Retrofit;
+import retrofit2.*;
 import retrofit2.converter.gson.GsonConverterFactory;
 import shaiytan.ssapweather.R;
-import shaiytan.ssapweather.content.DBHelper;
-import shaiytan.ssapweather.content.WeatherItem;
-import shaiytan.ssapweather.geocoding.GeocodingAPI;
-import shaiytan.ssapweather.geocoding.Geopoint;
+import shaiytan.ssapweather.content.*;
+import shaiytan.ssapweather.geocoding.*;
 
+//Сервис для получения прогноза погоды
 public class WeatherService extends Service {
-    public static final int UPDATE_PERIOD = 60 * 1000; //30min to update
+    private static final int UPDATE_PERIOD = 30 * 60 * 1000; //уведомления приходят каждые 30 минут
     private static final double UNSET = Double.MAX_VALUE;
+
     private WeatherAPI weatherAPI;
+    private GeocodingAPI geocodingAPI;
     private DBHelper dbHelper;
-    private NotificationManager nm;
     private double latitude;
     private double longitude;
+    private NotificationManager nm;
     private String location;
-    public static final String RESULT_ACTION = "shaiytan.ssapweather.service";
     private PendingIntent result;
-    private GeocodingAPI geocodingAPI;
 
-    public WeatherService() {
-    }
-
+    //отправка уведомлений по таймеру
+    // TODO: Разобраться с AlarmManager и переписать этот сервис как IntentService
+    private Timer updateTimer;
+    private final TimerTask updateTask = new TimerTask() {
+        @Override
+        public void run() {
+            boolean success = loadWeather() && loadForecast();
+            if (success)
+            {
+                WeatherItem res = dbHelper.readWeather();
+                Notification notification = new Notification.Builder(getApplicationContext())
+                        .setContentTitle(location+": "+res.getTemperature()+" C, "+res.getWeatherDescription())
+                        .setContentText("Влажность: "+res.getHumidity())
+                        .setWhen(System.currentTimeMillis())
+                        .setAutoCancel(true)
+                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .build();
+                nm.notify(1,notification);
+            }
+        }
+    };
     @Override
     public void onCreate() {
         super.onCreate();
@@ -69,6 +75,8 @@ public class WeatherService extends Service {
         latitude=UNSET;
         longitude=UNSET;
         location="";
+
+        //запуск таймера для отсылки уведомлений
         updateTimer = new Timer();
         updateTimer.schedule(updateTask,UPDATE_PERIOD, UPDATE_PERIOD);
     }
@@ -76,12 +84,18 @@ public class WeatherService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        //PendingIntent вызывающей активити, через который отправляется результат
         result = intent.getParcelableExtra("result");
+
+        //В параметрах передаются координаты города, для которого нужно загрузить погоду
+        //Если параметры отсутствуют, обновляем погоду для последнего известного местоположения
         if(intent.hasCategory("with_location")) {
             latitude = intent.getDoubleExtra("lat", UNSET);
             longitude = intent.getDoubleExtra("lon", UNSET);
             location = intent.getStringExtra("location");
         }
+        //для первого запуска сервиса определяется текущее местоположение
         else if(longitude==UNSET||latitude==UNSET){
             LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
@@ -93,22 +107,33 @@ public class WeatherService extends Service {
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
-
             location = intent.getStringExtra("location");
         }
+        //загрузка данных в отдельном потоке
         new Thread(loadTask).start();
-        return START_STICKY;
-    }
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        updateTimer.cancel();
+        return START_STICKY; //тут сервис должен бы стать неубиваемым, но почему-то это не так((
     }
+    private final Runnable loadTask = new Runnable() {
+        @Override
+        public void run() {
+            Intent intent=new Intent();
+            Response<Geopoint> response;
+            try {
+                response = geocodingAPI.geocode(latitude + "," + longitude).execute();
+                if(response.isSuccessful()) location=response.body().getLongName();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            boolean success = loadWeather() && loadForecast();
+            intent.putExtra("success",success);
+            try {
+                result.send(WeatherService.this,100,intent);
+            } catch (PendingIntent.CanceledException e) {
+                e.printStackTrace();
+            }
+        }
+    };
     synchronized private boolean loadWeather() {
         try {
             Response<WeatherItem> response = weatherAPI.getCurrentWeather(latitude, longitude).execute();
@@ -131,53 +156,15 @@ public class WeatherService extends Service {
         }
         return true;
     }
-    private final TimerTask updateTask = new TimerTask() {
-        @Override
-        public void run() {
-            boolean success = loadWeather() && loadForecast();
-            if (success)
-            {
-                SQLiteDatabase db = dbHelper.getReadableDatabase();
-                Cursor cursor = db.rawQuery("select * from weather where _id=0", null);
-                cursor.moveToFirst();
-                WeatherItem res = new WeatherItem(
-                        cursor.getString(cursor.getColumnIndex("description")),
-                        cursor.getString(cursor.getColumnIndex("icon")),
-                        cursor.getDouble(cursor.getColumnIndex("temperature")),
-                        cursor.getDouble(cursor.getColumnIndex("humidity")),
-                        cursor.getLong(cursor.getColumnIndex("datetime"))
-                );
-                cursor.close();
-                Notification notification = new Notification.Builder(getApplicationContext())
-                        .setContentTitle("Current Weather")
-                        .setContentText(res.toString())
-                        .setWhen(System.currentTimeMillis())
-                        .setAutoCancel(true)
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .build();
-                nm.notify(1,notification);
-            }
-        }
-    };
-    private Timer updateTimer;
-    private final Runnable loadTask = new Runnable() {
-        @Override
-        public void run() {
-            Intent intent=new Intent(RESULT_ACTION);
-            Response<Geopoint> response;
-            try {
-                response = geocodingAPI.geocode(latitude + "," + longitude).execute();
-                if(response.isSuccessful()) location=response.body().getLongName();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            boolean success = loadWeather() && loadForecast();
-            intent.putExtra("success",success);
-            try {
-                result.send(WeatherService.this,100,intent);
-            } catch (PendingIntent.CanceledException e) {
-                e.printStackTrace();
-            }
-        }
-    };
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        updateTimer.cancel();
+    }
+
 }
