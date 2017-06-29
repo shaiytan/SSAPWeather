@@ -40,6 +40,7 @@ public class WeatherService extends Service {
     private String location;
     public static final String RESULT_ACTION = "shaiytan.ssapweather.service";
     private PendingIntent result;
+    private GeocodingAPI geocodingAPI;
 
     public WeatherService() {
     }
@@ -56,6 +57,14 @@ public class WeatherService extends Service {
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
         weatherAPI = retrofit.create(WeatherAPI.class);
+        gson = new GsonBuilder()
+                .registerTypeAdapter(Geopoint.class, new Geopoint.GeopointDeserializer())
+                .create();
+        retrofit = new Retrofit.Builder()
+                .baseUrl("https://maps.googleapis.com/maps/api/")
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build();
+        geocodingAPI = retrofit.create(GeocodingAPI.class);
         dbHelper = new DBHelper(this);
         latitude=UNSET;
         longitude=UNSET;
@@ -73,17 +82,18 @@ public class WeatherService extends Service {
             longitude = intent.getDoubleExtra("lon", UNSET);
             location = intent.getStringExtra("location");
         }
-        else if(location.isEmpty()){
-            LocationManager loc = (LocationManager) getSystemService(LOCATION_SERVICE);
+        else if(longitude==UNSET||latitude==UNSET){
+            LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
-                loc.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,
+                locationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,
                         PendingIntent.getService(this,100,new Intent(),PendingIntent.FLAG_UPDATE_CURRENT));
-                Location location = loc.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                latitude=location.getLatitude();
-                longitude=location.getLongitude();
+                Location loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                latitude=loc.getLatitude();
+                longitude=loc.getLongitude();
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
+
             location = intent.getStringExtra("location");
         }
         new Thread(loadTask).start();
@@ -154,22 +164,12 @@ public class WeatherService extends Service {
         @Override
         public void run() {
             Intent intent=new Intent(RESULT_ACTION);
-            if(location.isEmpty())
-            {
-                Gson gson = new GsonBuilder()
-                        .registerTypeAdapter(Geopoint.class, new Geopoint.GeopointDeserializer())
-                        .create();
-                Retrofit retrofit = new Retrofit.Builder()
-                        .baseUrl("https://maps.googleapis.com/maps/api/")
-                        .addConverterFactory(GsonConverterFactory.create(gson))
-                        .build();
-                GeocodingAPI geocodingAPI = retrofit.create(GeocodingAPI.class);
-                try {
-                    Response<Geopoint> response = geocodingAPI.geocode(latitude + "," + longitude).execute();
-                    if(response.isSuccessful()) location=response.body().getLongName();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            Response<Geopoint> response;
+            try {
+                response = geocodingAPI.geocode(latitude + "," + longitude).execute();
+                if(response.isSuccessful()) location=response.body().getLongName();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
             boolean success = loadWeather() && loadForecast();
             intent.putExtra("success",success);

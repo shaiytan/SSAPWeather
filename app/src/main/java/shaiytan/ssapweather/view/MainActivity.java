@@ -4,20 +4,27 @@ import android.app.PendingIntent;
 import android.content.*;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
+import android.support.annotation.NonNull;
 import android.support.v4.widget.*;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.*;
 import android.view.*;
 import android.widget.*;
 
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.Status;
-import com.google.android.gms.location.places.AutocompleteFilter;
-import com.google.android.gms.location.places.Place;
-import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
-import com.google.android.gms.location.places.ui.PlaceSelectionListener;
-import com.google.android.gms.location.places.ui.SupportPlaceAutocompleteFragment;
+import com.facebook.AccessToken;
+import com.facebook.AccessTokenTracker;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.*;
+import com.google.android.gms.common.*;
+import com.google.android.gms.common.api.*;
+import com.google.android.gms.location.places.*;
+import com.google.android.gms.location.places.ui.*;
 import com.squareup.picasso.Picasso;
 
 import java.util.*;
@@ -28,9 +35,10 @@ import shaiytan.ssapweather.geocoding.Geopoint;
 import shaiytan.ssapweather.service.WeatherService;
 import android.support.v7.widget.Toolbar;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener {
     public static final int MAP_REQUEST = 1;
     public static final int WEATHER_REQUEST = 2;
+    public static final int SIGN_IN_REQUEST = 3;
     private DBHelper dbHelper;
     private ImageView icon;
     private TextView desc;
@@ -39,11 +47,12 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView forecastView;
     private SwitchCompat forecastSwitch;
     private SwipeRefreshLayout swipeUpdater;
-    private FloatingActionButton btnMap;
-    private Toolbar toolbar;
     private String location="";
     private TextView loc;
-    private PlaceAutocompleteFragment placePicker;
+    private GoogleApiClient googleApiClient;
+    private SignInButton signInButton;
+    private CallbackManager fbManager;
+    private AccessToken fbCurrentToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,12 +80,12 @@ public class MainActivity extends AppCompatActivity {
     }
     private void init()
     {
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
         toolbar.setTitle(R.string.app_name);
-        placePicker = (PlaceAutocompleteFragment) getFragmentManager()
-                .findFragmentById(R.id.place_pick);
+        PlaceAutocompleteFragment placePicker = (PlaceAutocompleteFragment)
+                getFragmentManager().findFragmentById(R.id.place_pick);
         placePicker.setFilter(new AutocompleteFilter.Builder()
                 .setTypeFilter(AutocompleteFilter.TYPE_FILTER_CITIES)
                 .build());
@@ -89,7 +98,6 @@ public class MainActivity extends AppCompatActivity {
                         .putExtra("lat",place.getLatLng().latitude)
                         .putExtra("lon",place.getLatLng().longitude);
                 invokeService(intent);
-
             }
 
             @Override
@@ -97,7 +105,44 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, status.getStatusMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-        btnMap = (FloatingActionButton) findViewById(R.id.map_btn);
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .requestIdToken(getString(R.string.google_auth_key))
+                .build();
+
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this, this)
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
+        signInButton = (SignInButton) findViewById(R.id.sign_google);
+        signInButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(googleApiClient);
+                startActivityForResult(signInIntent, SIGN_IN_REQUEST);
+            }
+        });
+        fbManager = CallbackManager.Factory.create();
+
+
+        LoginManager.getInstance().registerCallback(fbManager,
+                new FacebookCallback<LoginResult>() {
+                    @Override
+                    public void onSuccess(LoginResult loginResult) {
+                        fbCurrentToken = loginResult.getAccessToken();
+                        Toast.makeText(MainActivity.this, loginResult.getAccessToken().getToken(), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onCancel() {
+
+                    }
+
+                    @Override
+                    public void onError(FacebookException error) {
+
+                    }
+                });
         icon = (ImageView) findViewById(R.id.ic_weather);
         desc = (TextView) findViewById(R.id.desc);
         temp = (TextView) findViewById(R.id.temp);
@@ -182,11 +227,28 @@ public class MainActivity extends AppCompatActivity {
                 setForecastView(forecast);
                 swipeUpdater.setRefreshing(false);
                 break;
+            case SIGN_IN_REQUEST:
+                GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+                if (result.isSuccess()) {
+                    GoogleSignInAccount acct = result.getSignInAccount();
+                    Toast.makeText(this, "Token:"+acct.getIdToken(), Toast.LENGTH_SHORT).show();
+                }
+                break;
+            default:
+                fbManager.onActivityResult(requestCode,resultCode,data);
+                Toast.makeText(this, fbCurrentToken.getToken(), Toast.LENGTH_SHORT).show();
+                break;
         }
 
     }
+
     public void onMapClick(View view) {
         Intent intent = new Intent(this, MapsActivity.class);
         startActivityForResult(intent, MAP_REQUEST);
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Toast.makeText(this, "connectionFailed", Toast.LENGTH_SHORT).show();
     }
 }

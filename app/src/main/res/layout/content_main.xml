@@ -48,8 +48,7 @@
                     android:id="@+id/loc"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:text="Запорожье"/>
+                    android:layout_gravity="center_horizontal" />
                 <TextView
                     android:id="@+id/humid"
                     android:layout_width="wrap_content"
@@ -82,5 +81,25 @@
                 android:layout_height="wrap_content" >
 
             </android.support.v7.widget.RecyclerView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+            <com.google.android.gms.common.SignInButton
+                android:id="@+id/sign_google"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_marginTop="30dp"
+                android:layout_marginBottom="30dp"/>
+            <com.facebook.login.widget.LoginButton
+                android:id="@+id/sign_fb"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_vertical"
+                android:layout_marginTop="30dp"
+                android:layout_marginBottom="30dp"/>
+            </LinearLayout>
         </LinearLayout>
     </android.support.v4.widget.SwipeRefreshLayout>
