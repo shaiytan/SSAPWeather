@@ -4,18 +4,12 @@ import android.app.PendingIntent;
 import android.content.*;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.v4.widget.*;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.*;
 import android.view.*;
 import android.widget.*;
 
-import com.facebook.*;
-import com.facebook.login.*;
-import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.*;
-import com.google.android.gms.common.*;
 import com.google.android.gms.common.api.*;
 import com.google.android.gms.location.places.*;
 import com.google.android.gms.location.places.ui.*;
@@ -32,7 +26,6 @@ import android.support.v7.widget.Toolbar;
 public class MainActivity extends AppCompatActivity {
     public static final int MAP_REQUEST = 1;
     public static final int WEATHER_REQUEST = 2;
-    public static final int SIGN_IN_REQUEST = 3;
 
     private DBHelper dbHelper;
     private ImageView icon;
@@ -44,9 +37,6 @@ public class MainActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeUpdater;
     private String location="";
     private TextView loc;
-    private GoogleApiClient googleApiClient;
-    private CallbackManager fbManager;
-    private AccessToken fbCurrentToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,29 +70,25 @@ public class MainActivity extends AppCompatActivity {
     }
     private void init() {
         //строка живого поиска
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
         toolbar.setTitle(R.string.app_name);
         initLiveSearch();
 
-        //кнопки авторизации фейсбука и гугла
-        initGoogleSignIn();
-        initFacebookSignIn();
-
         //Карточка текущей погоды
-        icon = (ImageView) findViewById(R.id.ic_weather);
-        desc = (TextView) findViewById(R.id.desc);
-        temp = (TextView) findViewById(R.id.temp);
-        humid = (TextView) findViewById(R.id.humid);
-        loc = (TextView) findViewById(R.id.loc);
+        icon = findViewById(R.id.ic_weather);
+        desc = findViewById(R.id.desc);
+        temp = findViewById(R.id.temp);
+        humid = findViewById(R.id.humid);
+        loc = findViewById(R.id.loc);
 
         //Список карточек с прогнозом
-        forecastView = (RecyclerView) findViewById(R.id.rec_view);
+        forecastView = findViewById(R.id.rec_view);
         forecastView.setLayoutManager(
                 new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL,false));
         forecastView.setItemAnimator(new DefaultItemAnimator());
-        forecastSwitch = (SwitchCompat) findViewById(R.id.switch1);
+        forecastSwitch = findViewById(R.id.switch1);
         forecastSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -112,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //pull to update
-        swipeUpdater = (SwipeRefreshLayout) findViewById(R.id.swipe_updater);
+        swipeUpdater = findViewById(R.id.swipe_updater);
         swipeUpdater.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
@@ -141,47 +127,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(Status status) {
                 Toast.makeText(MainActivity.this, status.getStatusMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-    private void initFacebookSignIn() {
-        fbManager = CallbackManager.Factory.create();
-        LoginManager.getInstance().registerCallback(fbManager,
-                new FacebookCallback<LoginResult>() {
-                    @Override
-                    public void onSuccess(LoginResult loginResult) {
-                        fbCurrentToken = loginResult.getAccessToken();
-                        Toast.makeText(MainActivity.this, loginResult.getAccessToken().getToken(), Toast.LENGTH_SHORT).show();
-                    }
-
-                    //заглушки на ошибку
-                    @Override
-                    public void onCancel() {}
-                    @Override
-                    public void onError(FacebookException error) {}
-                });
-    }
-    private void initGoogleSignIn() {
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestEmail()
-                .requestIdToken(getString(R.string.google_auth_key))
-                .build();
-
-        googleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this, new GoogleApiClient.OnConnectionFailedListener() {
-                    @Override
-                    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-                        Toast.makeText(MainActivity.this, "connectionFailed", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
-                .build();
-        SignInButton signInButton = (SignInButton) findViewById(R.id.sign_google);
-        signInButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(googleApiClient);
-                startActivityForResult(signInIntent, SIGN_IN_REQUEST);
             }
         });
     }
@@ -245,19 +190,6 @@ public class MainActivity extends AppCompatActivity {
                 Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
                 setForecastView(forecast);
                 swipeUpdater.setRefreshing(false);
-                break;
-
-            //заглушка, та как хз что сделать с полученным токеном
-            case SIGN_IN_REQUEST:
-                GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-                if (result.isSuccess()) {
-                    GoogleSignInAccount acct = result.getSignInAccount();
-                    Toast.makeText(this, "Token:"+acct.getIdToken(), Toast.LENGTH_SHORT).show();
-                }
-                break;
-            default:
-                fbManager.onActivityResult(requestCode,resultCode,data);
-                Toast.makeText(this, "Token:"+fbCurrentToken.getToken(), Toast.LENGTH_SHORT).show();
                 break;
         }
 
