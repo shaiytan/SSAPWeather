@@ -1,6 +1,7 @@
 package shaiytan.ssapweather.view;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +13,7 @@ import com.squareup.picasso.Picasso;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import shaiytan.ssapweather.R;
@@ -26,52 +28,58 @@ class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHolder> {
     private List<WeatherItem> forecast;
     private Context context;
     private boolean extended;
+
     WeatherAdapter(Context context, List<WeatherItem> forecast, boolean extended) {
         this.forecast = forecast;
-        this.context=context;
-        this.extended=extended;
+        this.context = context;
+        this.extended = extended;
     }
 
     //создание карточки с погодой, и последующее её переиспользование
+    @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.weather_item,parent,false);
+                .inflate(R.layout.weather_item, parent, false);
         return new ViewHolder(v);
     }
 
     //Размещение данных на карточке
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         WeatherItem item = forecast.get(position);
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getDefault());
-        calendar.setTimeInMillis(item.getDatetime()*1000);
+        calendar.setTimeInMillis(item.getDatetime() * 1000);
+        Locale locale = Locale.getDefault();
         // на прогнозе погоды по дням, время можно не отображать, только дату
-        if(extended) holder.datetime.setText(String.format("%1$td.%1$tm\n%1$tH:%1$tM", calendar));
-        else holder.datetime.setText(String.format("%1$td.%1$tm", calendar));
+        if (extended)
+            holder.datetime.setText(String.format(locale, "%1$td.%1$tm\n%1$tH:%1$tM", calendar));
+        else holder.datetime.setText(String.format(locale, "%1$td.%1$tm", calendar));
         Picasso.with(context)
-                .load("http://openweathermap.org/img/w/" + item.getImageID() +".png")
+                .load("http://openweathermap.org/img/w/" + item.getImageID() + ".png")
                 .into(holder.icon);
-        holder.maxTemp.setText(String.format("%+.1f C",item.getTemperature()));
-        holder.humidity.setText(String.format("%.1f%%",item.getHumidity()));
+        holder.maxTemp.setText(String.format(locale, "%+.1f C", item.getTemperature()));
+        holder.humidity.setText(String.format(locale, "%.1f%%", item.getHumidity()));
     }
+
     @Override
     public int getItemCount() {
         return forecast.size();
     }
 
-    class ViewHolder extends RecyclerView.ViewHolder{
+    class ViewHolder extends RecyclerView.ViewHolder {
         private ImageView icon;
         private TextView maxTemp;
         private TextView humidity;
         private TextView datetime;
+
         ViewHolder(View itemView) {
             super(itemView);
-            icon = (ImageView) itemView.findViewById(R.id.ic_forecast);
-            maxTemp = (TextView) itemView.findViewById(R.id.temp_max);
-            humidity = (TextView) itemView.findViewById(R.id.humidity);
-            datetime= (TextView) itemView.findViewById(R.id.datetime);
+            icon = itemView.findViewById(R.id.ic_forecast);
+            maxTemp = itemView.findViewById(R.id.temp_max);
+            humidity = itemView.findViewById(R.id.humidity);
+            datetime = itemView.findViewById(R.id.datetime);
         }
     }
 

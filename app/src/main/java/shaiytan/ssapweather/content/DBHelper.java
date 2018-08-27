@@ -3,7 +3,8 @@ package shaiytan.ssapweather.content;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.*;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 
 
 /**
@@ -29,7 +30,7 @@ public class DBHelper extends SQLiteOpenHelper
     //В записи _id=0 хранится текущая погода, в остальных - прогноз на ближайшие 5 дней
     private static final String SELECT_CURRENT_WEATHER = "SELECT * FROM weather WHERE _id=0;";
     private static final String SELECT_FORECAST = "SELECT * FROM weather WHERE _id!=0;";
-    public static final String SELECT_LOCATION = "SELECT DISTINCT location FROM weather;";
+    private static final String SELECT_LOCATION = "SELECT DISTINCT location FROM weather;";
 
     public DBHelper(Context context) {
             super(context, DBNAME, null, DBVERSION);
