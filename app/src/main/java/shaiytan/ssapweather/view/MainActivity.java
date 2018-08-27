@@ -2,14 +2,13 @@ package shaiytan.ssapweather.view;
 
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.database.Cursor;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.SwitchCompat;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.ImageView;
@@ -23,29 +22,30 @@ import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.squareup.picasso.Picasso;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import shaiytan.ssapweather.R;
-import shaiytan.ssapweather.content.DBHelper;
-import shaiytan.ssapweather.content.WeatherItem;
+import shaiytan.ssapweather.db.WeatherDAO;
+import shaiytan.ssapweather.db.WeatherDatabase;
 import shaiytan.ssapweather.geocoding.Geopoint;
+import shaiytan.ssapweather.model.WeatherItem;
 import shaiytan.ssapweather.service.WeatherService;
 
 public class MainActivity extends AppCompatActivity {
     public static final int MAP_REQUEST = 1;
     public static final int WEATHER_REQUEST = 2;
 
-    private DBHelper dbHelper;
+    private WeatherDAO dao;
     private ImageView icon;
     private TextView desc;
     private TextView temp;
     private TextView humid;
     private RecyclerView forecastView;
-    private SwitchCompat forecastSwitch;
     private SwipeRefreshLayout swipeUpdater;
     private String location = "";
     private TextView loc;
+    private SharedPreferences preferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,14 +55,16 @@ public class MainActivity extends AppCompatActivity {
         //инициалицация полей связанных с интерфейсом
         init();
 
-        dbHelper = new DBHelper(this);
-        location = dbHelper.getLocation();
-        Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
+        dao = WeatherDatabase.getInstanse(this).getWeatherDAO();
+        preferences = getSharedPreferences("forecastlocation", MODE_PRIVATE);
+
+        location = preferences.getString("location", "");
+        List<WeatherItem> forecast = dao.getForecast();
 
         //при отсутствии актуальных данных о погоде, вызывается сервис
-        if (forecast.getCount() > 0) {
-            WeatherItem currentWeather = dbHelper.readWeather();
-            long lastUpdate = currentWeather.getDatetime() * 1000;
+        if (forecast.size() > 0) {
+            WeatherItem currentWeather = dao.getCurrentWeather();
+            long lastUpdate = currentWeather.getDatetime();
             if (System.currentTimeMillis() - lastUpdate < 30 * 60 * 1000) {
                 setWeatherView(currentWeather);
                 setForecastView(forecast);
@@ -77,32 +79,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
-        //строка живого поиска
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
         toolbar.setTitle(R.string.app_name);
         initLiveSearch();
 
-        //Карточка текущей погоды
         icon = findViewById(R.id.ic_weather);
         desc = findViewById(R.id.desc);
         temp = findViewById(R.id.temp);
         humid = findViewById(R.id.humid);
         loc = findViewById(R.id.loc);
 
-        //Список карточек с прогнозом
         forecastView = findViewById(R.id.rec_view);
         forecastView.setLayoutManager(
                 new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         forecastView.setItemAnimator(new DefaultItemAnimator());
-        forecastSwitch = findViewById(R.id.switch1);
-        forecastSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            Cursor forecast = dbHelper.readForecast(isChecked);
-            setForecastView(forecast);
-        });
 
-        //pull to update
         swipeUpdater = findViewById(R.id.swipe_updater);
         swipeUpdater.setOnRefreshListener(() -> {
             Intent intent = new Intent(MainActivity.this, WeatherService.class);
@@ -121,6 +114,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlaceSelected(Place place) {
                 location = place.getName().toString();
+                preferences.edit()
+                        .putString("location", location)
+                        .apply();
                 Intent intent = new Intent(MainActivity.this, WeatherService.class);
                 intent.addCategory("with_location")
                         .putExtra("lat", place.getLatLng().latitude)
@@ -135,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    //вызов сервиса с заданными параметрами
     private void invokeService(Intent intent) {
         PendingIntent result =
                 createPendingResult(WEATHER_REQUEST, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
@@ -144,9 +139,10 @@ public class MainActivity extends AppCompatActivity {
         startService(intent);
     }
 
-    //вывод текущей погоды на экран
     private void setWeatherView(WeatherItem weather) {
-        Picasso.with(this).load("http://openweathermap.org/img/w/" + weather.getImageID() + ".png").into(icon);
+        Picasso.with(this)
+                .load("http://openweathermap.org/img/w/" + weather.getImageID() + ".png")
+                .into(icon);
         desc.setText(weather.getWeatherDescription());
         Locale locale = Locale.getDefault();
         temp.setText(String.format(locale, "%+.1f C", weather.getTemperature()));
@@ -154,29 +150,20 @@ public class MainActivity extends AppCompatActivity {
         loc.setText(location);
     }
 
-    //вывод прогноза погоды
-    private void setForecastView(Cursor cursor) {
-        ArrayList<WeatherItem> forecast = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            WeatherItem item = new WeatherItem(
-                    cursor.getString(cursor.getColumnIndex("description")),
-                    cursor.getString(cursor.getColumnIndex("icon")),
-                    cursor.getDouble(cursor.getColumnIndex("temperature")),
-                    cursor.getDouble(cursor.getColumnIndex("humidity")),
-                    cursor.getLong(cursor.getColumnIndex("datetime")));
-            forecast.add(item);
-        }
-        forecastView.setAdapter(new WeatherAdapter(this, forecast, forecastSwitch.isChecked()));
+    private void setForecastView(List<WeatherItem> forecast) {
+        forecastView.setAdapter(new WeatherAdapter(this, forecast));
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        //получение результатов с карты, от сервиса и данные аутентификации от гугла и фейсбука соответственно
         switch (requestCode) {
             case MAP_REQUEST:
                 if (resultCode == RESULT_OK) {
                     Geopoint point = (Geopoint) data.getSerializableExtra("point");
                     location = point.getLongName();
+                    preferences.edit()
+                            .putString("location", location)
+                            .apply();
                     Intent intent = new Intent(MainActivity.this, WeatherService.class);
                     intent.addCategory("with_location")
                             .putExtra("lat", point.getLatitude())
@@ -189,10 +176,10 @@ public class MainActivity extends AppCompatActivity {
                 if (!data.getBooleanExtra("success", false)) {
                     Toast.makeText(this, "Failed to download", Toast.LENGTH_SHORT).show();
                 }
-                location = dbHelper.getLocation();
-                WeatherItem weather = dbHelper.readWeather();
+                WeatherItem weather = dao.getCurrentWeather();
+                location = weather.getLocation();
                 setWeatherView(weather);
-                Cursor forecast = dbHelper.readForecast(forecastSwitch.isChecked());
+                List<WeatherItem> forecast = dao.getForecast();
                 setForecastView(forecast);
                 swipeUpdater.setRefreshing(false);
                 break;

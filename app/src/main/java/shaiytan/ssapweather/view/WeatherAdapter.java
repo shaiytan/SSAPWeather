@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import shaiytan.ssapweather.R;
-import shaiytan.ssapweather.content.WeatherItem;
+import shaiytan.ssapweather.model.WeatherItem;
 
 /**
  * Created by Shaiytan on 26.06.2017.
@@ -27,12 +27,10 @@ class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHolder> {
 
     private List<WeatherItem> forecast;
     private Context context;
-    private boolean extended;
 
-    WeatherAdapter(Context context, List<WeatherItem> forecast, boolean extended) {
+    WeatherAdapter(Context context, List<WeatherItem> forecast) {
         this.forecast = forecast;
         this.context = context;
-        this.extended = extended;
     }
 
     //создание карточки с погодой, и последующее её переиспользование
@@ -53,9 +51,7 @@ class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHolder> {
         calendar.setTimeInMillis(item.getDatetime() * 1000);
         Locale locale = Locale.getDefault();
         // на прогнозе погоды по дням, время можно не отображать, только дату
-        if (extended)
-            holder.datetime.setText(String.format(locale, "%1$td.%1$tm\n%1$tH:%1$tM", calendar));
-        else holder.datetime.setText(String.format(locale, "%1$td.%1$tm", calendar));
+        holder.datetime.setText(String.format(locale, "%1$td.%1$tm\n%1$tH:%1$tM", calendar));
         Picasso.with(context)
                 .load("http://openweathermap.org/img/w/" + item.getImageID() + ".png")
                 .into(holder.icon);
