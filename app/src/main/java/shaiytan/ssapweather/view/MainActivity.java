@@ -1,8 +1,7 @@
 package shaiytan.ssapweather.view;
 
-import android.app.PendingIntent;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -26,56 +25,52 @@ import java.util.List;
 import java.util.Locale;
 
 import shaiytan.ssapweather.R;
-import shaiytan.ssapweather.db.WeatherDAO;
-import shaiytan.ssapweather.db.WeatherDatabase;
-import shaiytan.ssapweather.geocoding.Geopoint;
+import shaiytan.ssapweather.model.Geopoint;
 import shaiytan.ssapweather.model.WeatherItem;
-import shaiytan.ssapweather.service.WeatherService;
+import shaiytan.ssapweather.viewmodel.LocationViewModel;
+import shaiytan.ssapweather.viewmodel.WeatherViewModel;
 
 public class MainActivity extends AppCompatActivity {
     public static final int MAP_REQUEST = 1;
-    public static final int WEATHER_REQUEST = 2;
 
-    private WeatherDAO dao;
     private ImageView icon;
     private TextView desc;
     private TextView temp;
     private TextView humid;
     private RecyclerView forecastView;
     private SwipeRefreshLayout swipeUpdater;
-    private String location = "";
     private TextView loc;
-    private SharedPreferences preferences;
+    private WeatherViewModel weatherModel;
+    private LocationViewModel locationModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        weatherModel = ViewModelProviders.of(this).get(WeatherViewModel.class);
+        locationModel = ViewModelProviders.of(this).get(LocationViewModel.class);
         //инициалицация полей связанных с интерфейсом
         init();
 
-        dao = WeatherDatabase.getInstanse(this).getWeatherDAO();
-        preferences = getSharedPreferences("forecastlocation", MODE_PRIVATE);
-
-        location = preferences.getString("location", "");
-        List<WeatherItem> forecast = dao.getForecast();
-
-        //при отсутствии актуальных данных о погоде, вызывается сервис
-        if (forecast.size() > 0) {
-            WeatherItem currentWeather = dao.getCurrentWeather();
-            long lastUpdate = currentWeather.getDatetime();
-            if (System.currentTimeMillis() - lastUpdate < 30 * 60 * 1000) {
-                setWeatherView(currentWeather);
-                setForecastView(forecast);
-            } else {
-                Intent intent = new Intent(this, WeatherService.class);
-                invokeService(intent);
-            }
-        } else {
-            Intent intent = new Intent(this, WeatherService.class);
-            invokeService(intent);
-        }
+        locationModel.getLocation().observe(this, point -> {
+            if (point == null) return;
+            locationModel.saveLocation();
+            weatherModel.loadForecast(point, false);
+        });
+        weatherModel.getForecastData().observe(this, forecast -> {
+            if (forecast == null) return;
+            setForecastView(forecast);
+        });
+        weatherModel.getCurrentWeatherData().observe(this, currentWeather -> {
+            if (currentWeather == null) return;
+            setWeatherView(currentWeather);
+        });
+        weatherModel.getLoadingStatus().observe(this, refreshing -> {
+            if (refreshing == null) {
+                Toast.makeText(this, "Loading Error", Toast.LENGTH_SHORT).show();
+                swipeUpdater.setRefreshing(false);
+            } else swipeUpdater.setRefreshing(refreshing);
+        });
     }
 
     private void init() {
@@ -98,9 +93,9 @@ public class MainActivity extends AppCompatActivity {
 
         swipeUpdater = findViewById(R.id.swipe_updater);
         swipeUpdater.setOnRefreshListener(() -> {
-            Intent intent = new Intent(MainActivity.this, WeatherService.class);
-            invokeService(intent);
-            swipeUpdater.setRefreshing(true);
+            Geopoint point = locationModel.getLocation().getValue();
+            if (point == null) return;
+            weatherModel.loadForecast(point, true);
         });
     }
 
@@ -113,15 +108,7 @@ public class MainActivity extends AppCompatActivity {
         placePicker.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
             public void onPlaceSelected(Place place) {
-                location = place.getName().toString();
-                preferences.edit()
-                        .putString("location", location)
-                        .apply();
-                Intent intent = new Intent(MainActivity.this, WeatherService.class);
-                intent.addCategory("with_location")
-                        .putExtra("lat", place.getLatLng().latitude)
-                        .putExtra("lon", place.getLatLng().longitude);
-                invokeService(intent);
+                locationModel.updateLocation(place.getLatLng().latitude, place.getLatLng().longitude);
             }
 
             @Override
@@ -129,14 +116,6 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, status.getStatusMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private void invokeService(Intent intent) {
-        PendingIntent result =
-                createPendingResult(WEATHER_REQUEST, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
-        intent.putExtra("location", location);
-        intent.putExtra("result", result);
-        startService(intent);
     }
 
     private void setWeatherView(WeatherItem weather) {
@@ -147,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
         Locale locale = Locale.getDefault();
         temp.setText(String.format(locale, "%+.1f C", weather.getTemperature()));
         humid.setText(String.format(locale, "Влажность: %.1f%%", weather.getHumidity()));
-        loc.setText(location);
+        loc.setText(weather.getLocation());
     }
 
     private void setForecastView(List<WeatherItem> forecast) {
@@ -156,38 +135,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
-            case MAP_REQUEST:
-                if (resultCode == RESULT_OK) {
-                    Geopoint point = (Geopoint) data.getSerializableExtra("point");
-                    location = point.getLongName();
-                    preferences.edit()
-                            .putString("location", location)
-                            .apply();
-                    Intent intent = new Intent(MainActivity.this, WeatherService.class);
-                    intent.addCategory("with_location")
-                            .putExtra("lat", point.getLatitude())
-                            .putExtra("lon", point.getLongitude());
-                    invokeService(intent);
-
-                }
-                break;
-            case WEATHER_REQUEST:
-                if (!data.getBooleanExtra("success", false)) {
-                    Toast.makeText(this, "Failed to download", Toast.LENGTH_SHORT).show();
-                }
-                WeatherItem weather = dao.getCurrentWeather();
-                location = weather.getLocation();
-                setWeatherView(weather);
-                List<WeatherItem> forecast = dao.getForecast();
-                setForecastView(forecast);
-                swipeUpdater.setRefreshing(false);
-                break;
+        if (requestCode == MAP_REQUEST && resultCode == RESULT_OK) {
+            Geopoint point = (Geopoint) data.getSerializableExtra("point");
+            locationModel.updateLocation(point.getLatitude(), point.getLongitude());
         }
-
     }
 
-    //вызов карты
     public void onMapClick(View view) {
         Intent intent = new Intent(this, MapsActivity.class);
         startActivityForResult(intent, MAP_REQUEST);

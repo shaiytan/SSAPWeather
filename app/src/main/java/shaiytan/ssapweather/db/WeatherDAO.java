@@ -1,5 +1,6 @@
 package shaiytan.ssapweather.db;
 
+import android.arch.lifecycle.LiveData;
 import android.arch.persistence.room.Dao;
 import android.arch.persistence.room.Insert;
 import android.arch.persistence.room.OnConflictStrategy;
@@ -13,24 +14,23 @@ import shaiytan.ssapweather.model.WeatherItem;
 @Dao
 public abstract class WeatherDAO {
     @Query("SELECT DISTINCT * FROM weather WHERE id=0")
-    public abstract WeatherItem getCurrentWeather();
+    public abstract LiveData<WeatherItem> getCurrentWeather();
 
     @Query("SELECT * FROM weather WHERE id!=0")
-    public abstract List<WeatherItem> getForecast();
+    public abstract LiveData<List<WeatherItem>> getForecast();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     public abstract void updateCurrentWeather(WeatherItem item);
 
     @Insert
-    public abstract void writeForecast(List<WeatherItem> forecast);
+    protected abstract void writeForecast(List<WeatherItem> forecast);
 
     @Query("DELETE FROM weather WHERE id!=0")
-    public abstract void clearForecast();
+    protected abstract void clearForecast();
 
     @Transaction
-    public void updateForecast(WeatherItem currentWeather, List<WeatherItem> forecast) {
+    public void updateForecast(List<WeatherItem> forecast) {
         clearForecast();
-        updateCurrentWeather(currentWeather);
         writeForecast(forecast);
     }
 }

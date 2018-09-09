@@ -25,8 +25,8 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import shaiytan.ssapweather.R;
-import shaiytan.ssapweather.geocoding.GeocodingAPI;
-import shaiytan.ssapweather.geocoding.Geopoint;
+import shaiytan.ssapweather.api.GeocodingAPI;
+import shaiytan.ssapweather.model.Geopoint;
 
 //Карта для выбора города или области для прогноза погоды
 public class MapsActivity extends AppCompatActivity

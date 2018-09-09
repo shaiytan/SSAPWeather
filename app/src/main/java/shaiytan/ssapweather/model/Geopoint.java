@@ -1,13 +1,16 @@
-package shaiytan.ssapweather.geocoding;
+package shaiytan.ssapweather.model;
 
-import com.google.gson.*;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 
 import java.io.Serializable;
 import java.lang.reflect.Type;
 
 /**
  * Created by Shaiytan on 27.06.2017.
- *
  */
 
 public class Geopoint implements Serializable {
@@ -15,7 +18,7 @@ public class Geopoint implements Serializable {
     private double latitude;
     private double longitude;
 
-    private Geopoint(String longName, double latitude, double longitude) {
+    public Geopoint(String longName, double latitude, double longitude) {
         this.longName = longName;
         this.latitude = latitude;
         this.longitude = longitude;
@@ -32,7 +35,8 @@ public class Geopoint implements Serializable {
     public double getLongitude() {
         return longitude;
     }
-    public static class GeopointDeserializer implements JsonDeserializer<Geopoint>{
+
+    public static class GeopointDeserializer implements JsonDeserializer<Geopoint> {
 
         @Override
         public Geopoint deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -46,7 +50,7 @@ public class Geopoint implements Serializable {
                     .get("location").getAsJsonObject();
             double lat = location.get("lat").getAsDouble();
             double lng = location.get("lng").getAsDouble();
-            return new Geopoint(long_name,lat,lng);
+            return new Geopoint(long_name, lat, lng);
         }
     }
 }

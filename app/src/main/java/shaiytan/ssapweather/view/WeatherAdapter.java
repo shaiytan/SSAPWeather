@@ -48,9 +48,8 @@ class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHolder> {
         WeatherItem item = forecast.get(position);
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getDefault());
-        calendar.setTimeInMillis(item.getDatetime() * 1000);
+        calendar.setTimeInMillis(item.getDatetime());
         Locale locale = Locale.getDefault();
-        // на прогнозе погоды по дням, время можно не отображать, только дату
         holder.datetime.setText(String.format(locale, "%1$td.%1$tm\n%1$tH:%1$tM", calendar));
         Picasso.with(context)
                 .load("http://openweathermap.org/img/w/" + item.getImageID() + ".png")
