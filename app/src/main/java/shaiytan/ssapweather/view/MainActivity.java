@@ -1,5 +1,7 @@
 package shaiytan.ssapweather.view;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.os.Bundle;
@@ -27,6 +29,7 @@ import java.util.Locale;
 import shaiytan.ssapweather.R;
 import shaiytan.ssapweather.model.Geopoint;
 import shaiytan.ssapweather.model.WeatherItem;
+import shaiytan.ssapweather.notification.NotificationAlarmReceiver;
 import shaiytan.ssapweather.viewmodel.LocationViewModel;
 import shaiytan.ssapweather.viewmodel.WeatherViewModel;
 
@@ -57,9 +60,16 @@ public class MainActivity extends AppCompatActivity {
             locationModel.saveLocation();
             weatherModel.loadForecast(point, false);
         });
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
         weatherModel.getForecastData().observe(this, forecast -> {
             if (forecast == null) return;
             setForecastView(forecast);
+            for (int i = 0; i < forecast.size(); i++) {
+                WeatherItem item = forecast.get(i);
+                PendingIntent pendingIntent =
+                        NotificationAlarmReceiver.createPendingIntent(this, i, item);
+                am.set(AlarmManager.RTC, item.getDatetime(), pendingIntent);
+            }
         });
         weatherModel.getCurrentWeatherData().observe(this, currentWeather -> {
             if (currentWeather == null) return;

@@ -11,7 +11,6 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <activity
             android:name=".view.MainActivity"
             android:label="@string/app_name"
@@ -33,6 +32,7 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
+
         <activity
             android:name=".view.MapsActivity"
             android:label="@string/title_activity_maps">
@@ -40,6 +40,11 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="shaiytan.ssapweather.view.MainActivity" />
         </activity>
+
+        <receiver
+            android:name=".notification.NotificationAlarmReceiver"
+            android:enabled="true"
+            android:exported="true"></receiver>
     </application>
 
 </manifest>
